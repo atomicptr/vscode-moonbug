@@ -1,0 +1,125 @@
+{
+    "name": "vscode-moonbug",
+    "displayName": "moonbug",
+    "description": "Modern debugger for Lua, powered by the Debug Adapter Protocol.",
+    "version": "0.1.0",
+    "engines": {
+        "vscode": "^1.126.0"
+    },
+    "categories": [
+        "Debuggers"
+    ],
+    "keywords": [
+        "lua",
+        "luajit",
+        "love",
+        "löve",
+        "defold"
+    ],
+    "activationEvents": [
+        "onDebug",
+        "onDebugResolve:moonbug"
+    ],
+    "main": "./src/extension.js",
+    "contributes": {
+        "breakpoints": [
+            {
+                "language": "lua"
+            }
+        ],
+        "debuggers": [
+            {
+                "type": "moonbug",
+                "label": "moonbug",
+                "languages": [
+                    "lua"
+                ],
+                "initialConfigurations": [
+                    {
+                        "name": "moonbug: Launch Lua File",
+                        "type": "moonbug",
+                        "request": "launch",
+                        "lua": "lua",
+                        "program": "${file}",
+                        "host": "127.0.0.1",
+                        "port": 8888,
+                        "project_root_dir": "${workspaceFolder}"
+                    },
+                    {
+                        "name": "moonbug: Attach",
+                        "type": "moonbug",
+                        "request": "attach",
+                        "host": "127.0.0.1",
+                        "port": 8888,
+                        "project_root_dir": "${workspaceFolder}"
+                    }
+                ],
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "program"
+                        ],
+                        "properties": {
+                            "lua": {
+                                "type": "string",
+                                "default": "lua",
+                                "description": "Lua / host executable"
+                            },
+                            "program": {
+                                "type": "string",
+                                "default": "${file}"
+                            },
+                            "args": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "default": []
+                            },
+                            "host": {
+                                "type": "string",
+                                "default": "127.0.0.1"
+                            },
+                            "port": {
+                                "type": "number",
+                                "default": 8888
+                            },
+                            "project_root_dir": {
+                                "type": "string",
+                                "default": "${workspaceFolder}",
+                                "description": "Filesystem root used to resolve Lua source paths."
+                            }
+                        }
+                    },
+                    "attach": {
+                        "required": [
+                            "port"
+                        ],
+                        "properties": {
+                            "host": {
+                                "type": "string",
+                                "default": "127.0.0.1",
+                                "description": "Host where the moonbug debugger server is listening."
+                            },
+                            "port": {
+                                "type": "number",
+                                "default": 8888
+                            },
+                            "project_root_dir": {
+                                "type": "string",
+                                "default": "${workspaceFolder}",
+                                "description": "Filesystem root used to resolve Lua source paths."
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "scripts": {},
+    "devDependencies": {
+        "@types/vscode": "^1.126.0",
+        "@types/node": "24.x"
+    },
+    "type": "module"
+}
