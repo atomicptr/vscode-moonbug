@@ -9,6 +9,8 @@ const DEFAULT_PORT = 8888;
  * @typedef {Object} MoonbugConfig
  * @property {string} project_root_dir
  * @property {string} lua
+ * @property {string} host
+ * @property {number} port
  */
 
 /**
@@ -18,7 +20,11 @@ const DEFAULT_PORT = 8888;
 async function spawnProcess(config) {
     const child = spawn(config.lua || "lua", [config.program, ...(config.args ?? [])], {
         cwd: config.project_root_dir || process.cwd(),
-        env: process.env,
+        env: {
+            // if we picked a different port than default it makes sense to have moonbug use that instead
+            MOONBUG_PORT: config.port,
+            ...process.env,
+        },
         stdio: "ignore",
     });
 
