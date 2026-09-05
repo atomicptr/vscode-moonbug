@@ -17,8 +17,7 @@
         "defold"
     ],
     "activationEvents": [
-        "onDebug",
-        "onDebugResolve:moonbug"
+        "onDebug"
     ],
     "main": "./src/extension.js",
     "contributes": {
@@ -52,6 +51,34 @@
                         "host": "127.0.0.1",
                         "port": 8888,
                         "project_root_dir": "${workspaceFolder}"
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "moonbug: Launch Lua File",
+                        "description": "Launch a Lua file with moonbug",
+                        "body": {
+                            "name": "moonbug: Launch Lua File",
+                            "type": "moonbug",
+                            "request": "launch",
+                            "lua": "lua",
+                            "program": "^\"\\${file}\"",
+                            "host": "127.0.0.1",
+                            "port": 8888,
+                            "project_root_dir": "^\"\\${workspaceFolder}\""
+                        }
+                    },
+                    {
+                        "label": "moonbug: Attach",
+                        "description": "Attach to a moonbug server",
+                        "body": {
+                            "name": "moonbug: Attach",
+                            "type": "moonbug",
+                            "request": "attach",
+                            "host": "127.0.0.1",
+                            "port": 8888,
+                            "project_root_dir": "^\"\\${workspaceFolder}\""
+                        }
                     }
                 ],
                 "configurationAttributes": {
