@@ -1,6 +1,8 @@
 # vscode-moonbug
 
-Visual Studio Code extension for using the [moonbug](https://github.com/atomicptr/moonbug) Lua debugger.
+Lua debugger for Visual Studio Code, powered by [moonbug](https://github.com/atomicptr/moonbug)
+
+Please report issues at the main repository: [atomicptr/moonbug](https://github.com/atomicptr/moonbug)
 
 ## Install
 

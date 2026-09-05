@@ -1,7 +1,7 @@
 {
     "name": "vscode-moonbug",
     "displayName": "moonbug",
-    "description": "Modern debugger for Lua, powered by the Debug Adapter Protocol.",
+    "description": "Single-file Lua debugger - in-process hooks, remote DAP, no extra binary.",
     "version": "0.1.0",
     "engines": {
         "vscode": "^1.126.0"
