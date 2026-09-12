@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
 import * as vscode from "vscode";
 import * as net from "net";
+import * as path from "path";
 
 const DEBUG_TYPE = "moonbug";
 const DEFAULT_PORT = 8888;
@@ -15,14 +16,21 @@ const DEFAULT_PORT = 8888;
 
 /**
  * @param {MoonbugConfig} config
+ * @param {string}        extensionPath
  * @return {Promise<ChildProcess>}
  */
-async function spawnProcess(config) {
+async function spawnProcess(config, extensionPath) {
+    const resourcesDir = path.join(extensionPath, "resources", "?.lua");
+    const existingLuaPath = process.env.LUA_PATH || "";
+
+    const luaPath = `${resourcesDir};${existingLuaPath}`;
+
     const child = spawn(config.lua || "lua", [config.program, ...(config.args ?? [])], {
         cwd: config.project_root_dir || process.cwd(),
         env: {
             // if we picked a different port than default it makes sense to have moonbug use that instead
             MOONBUG_PORT: config.port,
+            LUA_PATH: luaPath,
             ...process.env,
         },
         stdio: "ignore",
@@ -79,6 +87,9 @@ async function waitForPort(host, port, timeoutMs = 5000) {
     });
 }
 
+/**
+ * @param {vscode.ExtensionContext} context
+ */
 export function activate(context) {
     context.subscriptions.push(
         vscode.debug.registerDebugAdapterDescriptorFactory(DEBUG_TYPE, {
@@ -90,7 +101,7 @@ export function activate(context) {
                 let childProcess = null;
 
                 if (config?.request === "launch" && config.program) {
-                    childProcess = await spawnProcess(config);
+                    childProcess = await spawnProcess(config, context.extensionPath);
                 }
 
                 try {
