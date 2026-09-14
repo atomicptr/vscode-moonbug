@@ -3,6 +3,10 @@
     "displayName": "moonbug",
     "description": "Single-file Lua debugger - in-process hooks, remote DAP, no extra binary.",
     "version": "0.1.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/atomicptr/vscode-moonbug.git"
+    },
     "engines": {
         "vscode": "^1.126.0"
     },
