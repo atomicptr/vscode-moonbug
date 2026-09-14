@@ -8,6 +8,7 @@
         "url": "https://github.com/atomicptr/vscode-moonbug.git"
     },
     "publisher": "atomicptr",
+    "icon": "resources/moonbug_logo.png",
     "engines": {
         "vscode": "^1.126.0"
     },
@@ -149,8 +150,7 @@
         ]
     },
     "scripts": {
-        "build:package": "npx @vscode/vsce package",
-        "build:publish": "npx @vscode/vsce publish"
+        "build:package": "npx @vscode/vsce package"
     },
     "devDependencies": {
         "@types/vscode": "^1.126.0",
