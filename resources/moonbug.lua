@@ -187,9 +187,8 @@ local table_unpack = rawget(_G, "unpack") or table.unpack
 ---@field json?   moonbug.compat.JsonLib
 
 ---@class moonbug.Compat
----@field libs       moonbug.compat.Libs
----@field log_fatal  fun(message: string)
----@field log_print  fun(message: string)
+---@field libs      moonbug.compat.Libs
+---@field log_print fun(message: string)
 
 ---@type moonbug.Compat
 M.compat = {
@@ -197,7 +196,6 @@ M.compat = {
         json = nil,
         socket = nil,
     },
-    log_fatal = error,
     log_print = print,
 }
 
@@ -256,12 +254,12 @@ local function print_log(level, fmt, ...)
     local message = select("#", ...) > 0 and string.format(fmt, ...) or fmt
     local output = string.format("moonbug:%s: %s", log_level_to_string(level), message)
 
+    M.compat.log_print(output)
+
     if level == log_level.fatal then
-        M.compat.log_fatal(output)
+        os.exit(1, true)
         return
     end
-
-    M.compat.log_print(output)
 end
 
 local log = {
@@ -1388,10 +1386,10 @@ local function session_send_output(category, output, source, line)
     return true
 end
 
----@param req     moonbug.dap.Request
----@param ok      boolean
----@param body    any
----@param message any
+---@param req      moonbug.dap.Request
+---@param ok       boolean
+---@param body?    table
+---@param message? "cancelled"|"notStopped"|string
 local function session_send_response(req, ok, body, message)
     session_send_seq {
         seq = -1, -- will be filled out by send_seq
@@ -1655,13 +1653,14 @@ end
 
 ---@param body    function
 ---@param timeout number
----@return table
+---@return table? returns nil when timeout ran out
 local function run_with_timeout(body, timeout)
     local deadline = socket().gettime() + timeout
 
     local check_timeout = function()
         if socket().gettime() > deadline then
-            log.fatal("evaluation timed out after %ss", timeout)
+            log.error("evaluation timed out after %ss", timeout)
+            return nil
         end
     end
 
@@ -1788,7 +1787,9 @@ local function evaluate_expr(ordinal, src, timeout, context)
         setmetatable(env, {
             __index = _G,
             __newindex = function(_, key)
-                log.fatal(string.format("cannot assign to '%s' in a read-only context", tostring(key)), 2)
+                local err_message = string.format("cannot assign to '%s' in a read-only context", tostring(key))
+                log.error(err_message)
+                error(err_message, 2)
             end,
         })
     end
@@ -1800,6 +1801,10 @@ local function evaluate_expr(ordinal, src, timeout, context)
     local results = run_with_timeout(function()
         return fn(table_unpack(varargs))
     end, timeout)
+
+    if not results then
+        return false, "timeout", 0
+    end
 
     -- write back results if mutable
     if is_mutable then
@@ -2134,35 +2139,6 @@ local function capture_stacktrace()
     return table.concat(parts, "\n")
 end
 
----@return integer
-local function get_port()
-    return tonumber(os.getenv "MOONBUG_PORT") or default_port
-end
-
----@param host string?
----@param port integer?
----@return moonbug.Socket?
----@return string?
-local function bind(host, port)
-    resolve_libs()
-
-    local h = host or "127.0.0.1"
-    local p = port or get_port()
-
-    log.debug("attempt to listen on '%s:%d'", host, port)
-
-    local server, err = socket().bind(h, p)
-    if not server then
-        log.error("could not bind '%s:%d': %s", h, p, err)
-        return nil, err
-    end
-
-    log.debug("successfully bound socket to '%s:%d'", h, p)
-
-    server:settimeout(0)
-    return server, nil
-end
-
 local RequestHandler = {}
 
 ---@param req moonbug.dap.InitializeRequest
@@ -2193,7 +2169,7 @@ end
 
 ---@param req moonbug.dap.ConfigurationDoneRequest
 function RequestHandler.handle_configuration_done(req)
-    session_send_response(req, true, {})
+    session_send_response(req, true)
 
     for name in pairs(package.loaded) do
         if type(name) == "string" then
@@ -2260,7 +2236,7 @@ function RequestHandler.handle_set_exception_breakpoints(req)
     session.filters.error = on.error or false
     session.filters.pcall = on.pcall or false
     session.filters.uncaught = on.uncaught or false
-    session_send_response(req, true, {})
+    session_send_response(req, true)
 end
 
 ---@param req moonbug.dap.ThreadsRequest
@@ -2399,7 +2375,7 @@ end
 function RequestHandler.handle_pause(req)
     session.step = "pause"
 
-    session_send_response(req, true, {})
+    session_send_response(req, true)
 end
 
 ---@param req moonbug.dap.NextRequest
@@ -2419,7 +2395,7 @@ function RequestHandler.handle_next(req)
 
     set_resume_location(curr_handle, session.step_level, false)
 
-    session_send_response(req, true, {})
+    session_send_response(req, true)
 end
 
 ---@param req moonbug.dap.StepInRequest
@@ -2436,7 +2412,7 @@ function RequestHandler.handle_step_in(req)
 
     set_resume_location(curr_handle, curr_ctx.stack_level, false)
 
-    session_send_response(req, true, {})
+    session_send_response(req, true)
 end
 
 ---@param req moonbug.dap.StepOutRequest
@@ -2456,7 +2432,7 @@ function RequestHandler.handle_step_out(req)
 
     set_resume_location(curr_handle, session.step_level, true)
 
-    session_send_response(req, true, {})
+    session_send_response(req, true)
 end
 
 ---@param req moonbug.dap.ScopesRequest
@@ -2614,6 +2590,10 @@ function RequestHandler.handle_evaluate(req)
         return serialize_eval_result(res, count)
     end, timeout)
 
+    if not result then
+        return
+    end
+
     if not result[1] then
         session_send_error(req, tostring(result[2]) or "failed to serialize evaluation result")
         return
@@ -2765,7 +2745,12 @@ function RequestHandler.handle_launch(req)
         session.project_root_dir = args.project_root_dir or args.cwd or args["workspaceFolder"]
     end
 
-    session_send_response(req, true, {})
+    -- still not applied...
+    if not session.project_root_dir then
+        log.fatal "launch config `project_root_dir` is missing, aborting..."
+    end
+
+    session_send_response(req, true)
 end
 
 ---@param req moonbug.dap.AttachRequest
@@ -2776,7 +2761,12 @@ function RequestHandler.handle_attach(req)
         session.project_root_dir = args.project_root_dir or args.cwd or args["workspaceFolder"]
     end
 
-    session_send_response(req, true, {})
+    -- still not applied...
+    if not session.project_root_dir then
+        log.fatal "launch config `project_root_dir` is missing, aborting..."
+    end
+
+    session_send_response(req, true)
 end
 
 ---@param req moonbug.dap.DisconnectRequest
@@ -2790,7 +2780,7 @@ function RequestHandler.handle_disconnect(req)
     session.paused = false
     session.step = nil
 
-    session_send_response(req, true, {})
+    session_send_response(req, true)
     remove_debug_hook()
 
     uninstall_wrappers()
@@ -2813,7 +2803,7 @@ function RequestHandler.handle_terminate(req)
     session.paused = false
     session.step = nil
 
-    session_send_response(req, true, {})
+    session_send_response(req, true)
     session_send_event(dap_events.terminated)
 
     session.terminate_requested = true
@@ -3089,11 +3079,13 @@ local function wrapped_error(message, level)
     maybe_pause_on_error(message)
 
     if level == 0 then
-        log.fatal(message, 0)
+        log.error(message)
+        error(message, 0)
         return
     end
 
-    log.fatal(message, (level or 1) + 1)
+    log.error(message)
+    error(message, (level or 1) + 1)
 end
 
 ---@param value any
@@ -3107,7 +3099,8 @@ local function wrapped_assert(value, ...)
 
     local message = select(1, ...) or "assertion failed!"
     maybe_pause_on_error(message)
-    log.fatal(message, 2)
+    log.error(message)
+    error(message, 2)
 end
 
 local function install_wrappers()
@@ -3510,6 +3503,30 @@ remove_debug_hook = function()
             end
         end
     end
+end
+
+---@param host string?
+---@param port integer?
+---@return moonbug.Socket?
+---@return string?
+local function bind(host, port)
+    resolve_libs()
+
+    local h = host or "127.0.0.1"
+    local p = port or tonumber(os.getenv "MOONBUG_PORT") or default_port
+
+    log.debug("attempt to listen on '%s:%d'", h, p)
+
+    local server, err = socket().bind(h, p)
+    if not server then
+        log.error("could not bind '%s:%d': %s", h, p, err)
+        return nil, err
+    end
+
+    log.debug("successfully bound socket to '%s:%d'", h, p)
+
+    server:settimeout(0)
+    return server, nil
 end
 
 ---@param host? string
