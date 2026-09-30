@@ -1,7 +1,7 @@
 {
     "name": "vscode-moonbug",
     "displayName": "moonbug",
-    "description": "Single-file Lua debugger - in-process hooks, remote DAP, no extra binary.",
+    "description": "Single-file, in-process, DAP powered Lua debugger for your favorite code editor!",
     "version": "0.1.0",
     "repository": {
         "type": "git",
